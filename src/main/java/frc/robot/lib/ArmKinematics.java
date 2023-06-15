@@ -18,7 +18,28 @@ public class ArmKinematics {
     }
 
     public class LinearArmPath{
+        /*
+         * x = At + B
+         * y = Ct + D
+         * 
+         * t in millisecodns
+         */
+        double A, B;
+        double C, D;
 
+        public LinearArmPath(double A, double B, double C, double D){
+            this.A = A;
+            this.B = B;
+            this.C = C;
+            this.D = D;
+        }
+
+        public double getX(double t){
+            return A*t + B;
+        }
+        public double getY(double t){
+            return C*t + D;
+        }
     }
 
     public class QuardaticArmPath{

@@ -79,22 +79,27 @@ public class ArmSubsystem extends SubsystemBase {
     /*
      *  Define (0, 0) As the arm's resting position 
      * Units: meters, radians
+     * x axis = floor
+     * y axis = arm
      */
 
-    private final double ARM_REST = 0;
+    private final double PIVOT_HEIGHT = 0;
 
-    public void setPoint(Point point){
-        double x = point.x;
-        double y = point.y;
+    public void setPoint(double x, double y){
+        if(!inDomain(x, y)) return;
 
         //Pivot
-        double angle = Constants.TAU/4- Math.atan2(x, y);
+        double angle = Math.atan2(x, y-PIVOT_HEIGHT);   //Rotate 90 degrees, then flip over the x axis
         pivot(angle);
 
         //Extension
-        double  length = Math.sqrt(x*x + (y+ARM_REST)*(y+ARM_REST));
+        double  length = Math.sqrt(x*x + (y-PIVOT_HEIGHT)*(y-PIVOT_HEIGHT));
         double nu = NRUnits.Extension.mToNU(length);
         extendNU(nu);
+    }
+
+    public boolean inDomain(double x, double y){
+        return true;
     }
 
 
@@ -223,11 +228,6 @@ public class ArmSubsystem extends SubsystemBase {
         tromboneSlide.setRotorPosition(0);
     }
 
-    //Extends arm to specified position in meters
-    public void extendM(double pos){
-       extendNU(NRUnits.Extension.mToNU(pos));
-    }
-
     public void extendNU(double nu){
         // if(Constants.Logging.ARM) LogManager.appendToLog(nu, "Arm:/Extender/SetNU");
         extendSetter.Position = nu;
@@ -301,29 +301,6 @@ public class ArmSubsystem extends SubsystemBase {
 
     public double getExtendNU(){
         return tromboneSlide.getPosition().getValue();
-    }
-
-    //Returns the extension of the arm in meters
-    public double getLength(){
-        double pos = getExtendNU();
-
-        return NRUnits.Extension.NUToM(pos);
-    }
-
-    public double getArmStatorCurrent() {
-        return tromboneSlide.getStatorCurrent().getValue();
-    }
-    
-    public double getArmSupplyCurrent() {
-        return tromboneSlide.getSupplyCurrent().getValue();
-    }
-
-    public double getPivotStatorCurrent() {
-        return kick1.getStatorCurrent().getValue();
-    }
-
-    public double getPivotSupplyCurrent() {
-        return kick1.getSupplyCurrent().getValue();
     }
 
     public double getPivotPos(){
