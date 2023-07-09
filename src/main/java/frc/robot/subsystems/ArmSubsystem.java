@@ -7,6 +7,7 @@ import com.ctre.phoenixpro.configs.TalonFXConfiguration;
 import com.ctre.phoenixpro.configs.TalonFXConfigurator;
 import com.ctre.phoenixpro.controls.Follower;
 import com.ctre.phoenixpro.controls.MotionMagicDutyCycle;
+import com.ctre.phoenixpro.controls.PositionDutyCycle;
 import com.ctre.phoenixpro.hardware.CANcoder;
 import com.ctre.phoenixpro.hardware.TalonFX;
 import com.ctre.phoenixpro.signals.AbsoluteSensorRangeValue;
@@ -16,9 +17,11 @@ import com.ctre.phoenixpro.signals.MagnetHealthValue;
 import com.ctre.phoenixpro.signals.NeutralModeValue;
 import com.ctre.phoenixpro.signals.SensorDirectionValue;
 
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants;
-import frc.robot.lib.ArmKinematics.Point;
+import frc.robot.lib.ArmKinematics;
+import frc.robot.lib.Point;
 import frc.robot.lib.math.NRUnits;
 
 
@@ -33,12 +36,16 @@ public class ArmSubsystem extends SubsystemBase {
 
     private MotionMagicDutyCycle extendSetter;
     private MotionMagicDutyCycle pivotSetter;
+    private PositionDutyCycle s;
 
     private TalonFX kick1, kick2; //Control the pivoting of the entire arm
     private TalonFXConfigurator foot;
     private TalonFXConfiguration footConfig;
 
     public static ArmStatus status = ArmStatus.OK;
+
+    private double lastTime;
+    private Point lastPoint;
 
     //Not an FMS (Flying Monster Spaghetti) :(
     public static enum ArmStatus{
@@ -65,6 +72,9 @@ public class ArmSubsystem extends SubsystemBase {
         encoder = new CANcoder(Constants.Arm.ENCODER_PORT, "drivet");
         encoderConfigurator = encoder.getConfigurator();
 
+        lastTime = System.currentTimeMillis()/1000;
+        lastPoint = new Point(0, REST_LENGTH);
+
         config();
     }
 
@@ -83,22 +93,52 @@ public class ArmSubsystem extends SubsystemBase {
      * y axis = arm
      */
 
-    private final double PIVOT_HEIGHT = 0;
-
+    private final double PIVOT_HEIGHT = 0.518;
+    public void setPoint(Point p){
+        setPoint(p.x, p.y);
+    }
     public void setPoint(double x, double y){
         if(!inDomain(x, y)) return;
-
+        double lastX = lastPoint.x;
+        double lastY = lastPoint.y;
+        double targetTime = 0.5;  //seconds
         //Pivot
         double angle = Math.atan2(x, y-PIVOT_HEIGHT);   //Rotate 90 degrees, then flip over the x axis
+        double lastAngle = Math.atan2(lastX, lastY-PIVOT_HEIGHT);
+        double velocity = (Math.abs(angle-lastAngle))/(targetTime);
+        velocity = NRUnits.Pivot.radToRot(velocity);
+        setPivotCruiseVelocity(velocity);
         pivot(angle);
 
         //Extension
         double  length = Math.sqrt(x*x + (y-PIVOT_HEIGHT)*(y-PIVOT_HEIGHT));
-        double nu = NRUnits.Extension.mToNU(length);
+        double nu = NRUnits.Extension.mToRot(length);
+
+        double lastLength = Math.sqrt(lastX*lastX + (lastY-PIVOT_HEIGHT)*(lastY-PIVOT_HEIGHT));
+        double lastNU = NRUnits.Extension.mToRot(lastLength);
+        velocity = (Math.abs(nu-lastNU))/targetTime;
+        setExtendCruiseVelocity(velocity);
         extendNU(nu);
+
+
+        lastPoint = new Point(x, y);
     }
 
+    
+
+    private final double REST_LENGTH = 0.733;
+    private final double MAX_EXTEND = 1.63;
+    public boolean inDomain(Point p){
+        return inDomain(p.x, p.y);
+    }
     public boolean inDomain(double x, double y){
+        //Areas less than where the arm can reach
+        if(x*x + (y-PIVOT_HEIGHT)*(y-PIVOT_HEIGHT) < REST_LENGTH*REST_LENGTH) return false;
+        //Area greater than where the arm is allowed to reach
+        if(x*x + (y-PIVOT_HEIGHT)*(y-PIVOT_HEIGHT) > MAX_EXTEND*MAX_EXTEND) return false;
+        //Keep arm above ground
+        if(y <= 0) return false;
+
         return true;
     }
 
@@ -143,14 +183,31 @@ public class ArmSubsystem extends SubsystemBase {
 
 
 
+    @Override
+    public void periodic() {
+        SmartDashboard.putNumber("Pivot Pos", getPivotPos());
+        SmartDashboard.putNumber("Pivot Pos w/ GR", getPivotPos()/Constants.Arm.PIVOT_GEARRATIO);
+        SmartDashboard.putNumber("Pivot Deg", getPivotDeg());
+        SmartDashboard.putNumber("Encoder Deg", getEncoderDeg());
+        SmartDashboard.putNumber("Pivot Current", getPivotStator());
+        SmartDashboard.putNumber("Pivot Voltage", getPivotPower());
+        SmartDashboard.putBoolean("Encoder Ok", encoderOK());
+        double pivotVelocity = getPivotVelocity();
+        SmartDashboard.putNumber("Pivot Velocity", pivotVelocity);
+        double time = System.currentTimeMillis()/1000;
+        SmartDashboard.putNumber("Pivot Acceleration", pivotVelocity/(time-lastTime));
+        lastTime = time;
 
+        Point pt = ArmKinematics.getPoint(getPivotRad(), getExtendNU());
+        SmartDashboard.putNumber("Arm X", pt.x);
+        SmartDashboard.putNumber("Arm Y", pt.y);
+    }
 
-
-
+    public boolean invertedCorrectly(){
+        return kick1.getInverted() != kick2.getInverted();
+    }
 
     public void config(){
-        kick2.setControl(new Follower(Constants.Arm.PIVOT_PORT_1, true));
-
         //Configure the extension motor
         tuneConfig = new TalonFXConfiguration();
         tuneConfig.Slot0.kS = 0;
@@ -178,6 +235,7 @@ public class ArmSubsystem extends SubsystemBase {
 
         tuningSlide.apply(tuneConfig);
 
+        kick2.setControl(new Follower(Constants.Arm.PIVOT_PORT_1, true));
         //Configure the pivot motors
         footConfig = new TalonFXConfiguration();
         footConfig.Slot0.kS = 0;
@@ -203,7 +261,11 @@ public class ArmSubsystem extends SubsystemBase {
         footConfig.MotionMagic.MotionMagicJerk = 0;
 
         //Remote CANcoder
-        footConfig.Feedback.FeedbackSensorSource = FeedbackSensorSourceValue.RotorSensor;
+        footConfig.Feedback.FeedbackSensorSource = FeedbackSensorSourceValue.RemoteCANcoder;
+        footConfig.Feedback.FeedbackRemoteSensorID = 4;
+        footConfig.Feedback.FeedbackRotorOffset = Constants.Arm.ENCODER_OFFSET;
+        footConfig.Feedback.RotorToSensorRatio = Constants.Arm.PIVOT_GEARRATIO;
+        footConfig.Feedback.SensorToMechanismRatio = 1;
         foot.apply(footConfig);
 
 
@@ -236,6 +298,18 @@ public class ArmSubsystem extends SubsystemBase {
 
     public double getEncoderDeg(){
         return encoder.getAbsolutePosition().getValue() * 360;
+    }
+    public double getEncoderRad(){
+        return getEncoderDeg() * Constants.TAU/360;
+    }
+    public boolean closeEnough(Point p1, Point p2){
+        double x1 = p1.x;
+        double y1 = p1.y;
+
+        double x2 = p2.x;
+        double y2 = p2.y;
+
+        return Math.abs(x1 - x2) < 0.1 && Math.abs(y1-y2) < 0.1;
     }
 
     public boolean encoderOK(){
@@ -285,18 +359,24 @@ public class ArmSubsystem extends SubsystemBase {
         double NU = NRUnits.Pivot.radToRot(angle);
         // if(Constants.Logging.ARM) LogManager.appendToLog(NU, "Arm:/Pivot2/SetPosition");
 
-        // double ff = 0;
-        // if(NU >= 8552.632){
-        //     ff = 0.00000076 * tromboneSlide.getPosition().getValue()-0.00653;
-        // }
-
-        // ff *= -Math.sin(angle);
-
+        double ff = -Math.sin(getPivotRad()) * 0.01128405;
+        double extendRot = getExtendNU();
+        if(extendRot > 15){
+            ff -= 0.00199741*extendRot;
+        }
   
         pivotSetter.Slot = 0;
         pivotSetter.Position = NU;
-        // posSetter.FeedForward = ff;
+        // pivotSetter.FeedForward = ff;
         kick1.setControl(pivotSetter);
+    }
+
+    public void pivotPos(double pos){
+        pivotSetter.Position = pos;
+        kick1.setControl(pivotSetter);
+    }
+    public void setPivotSpeed(double speed){
+        kick1.set(speed);
     }
 
     public double getExtendNU(){
@@ -313,6 +393,16 @@ public class ArmSubsystem extends SubsystemBase {
     //Returns the angle of the arm
     public double getPivotRad(){
         return getPivotDeg() * Constants.TAU/360;
+    }
+    public double getPivotStator(){
+        return kick1.getStatorCurrent().getValue();
+    }
+    public double getPivotVelocity(){
+        return kick1.getVelocity().getValue();
+    }
+    public double getPivotPower(){
+        // return kick1.getSupplyVoltage().getValue();
+        return kick1.getClosedLoopOutput().getValue();
     }
 
     public void setPivotCruiseVelocity(double cruiseVelocity) {
@@ -359,5 +449,18 @@ public class ArmSubsystem extends SubsystemBase {
     public void setDefaultAcceleration() {
         setExtendAcceleration(Constants.Arm.ARM_ACCELERATION);
         setPivotAcceleration(Constants.Arm.PIVOT_ACCELERATION);
+    }
+
+    public void setKF(double kF){
+        footConfig.Slot0.kV = kF;
+        foot.apply(footConfig);
+    }
+    public void setKP(double kP){
+        footConfig.Slot0.kP = kP;
+        foot.apply(footConfig);
+    }
+    public void setKD(double kD){
+        footConfig.Slot0.kD = kD;
+        foot.apply(footConfig);
     }
 }

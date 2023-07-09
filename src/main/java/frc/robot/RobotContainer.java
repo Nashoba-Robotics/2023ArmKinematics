@@ -5,7 +5,14 @@
 package frc.robot;
 
 import frc.robot.Constants.OperatorConstants;
+import frc.robot.commands.ArmTestCommand;
+import frc.robot.commands.LinearArmCommand;
+import frc.robot.commands.PIDTuneCommand;
+import frc.robot.commands.PointTestCommand;
+import frc.robot.subsystems.GrabberSubsystem;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 
@@ -22,6 +29,11 @@ public class RobotContainer {
   public RobotContainer() {
     // Configure the trigger bindings
     configureBindings();
+    // SmartDashboard.putData(new PIDTuneCommand());
+    SmartDashboard.putData(new ArmTestCommand());
+    SmartDashboard.putData(new PointTestCommand());
+    SmartDashboard.putData(new LinearArmCommand(Constants.ArmKinematics.line));
+    SmartDashboard.putData("Zero Wrist", new InstantCommand(() -> GrabberSubsystem.getInstance().zeroWrist(), GrabberSubsystem.getInstance()));
   }
 
   /**
