@@ -59,12 +59,12 @@ public final class Constants {
     public static final double PIVOT_KD = 0.0;
 
     //Scorign (Radians)
-    public static final double HIGH_FRONT_ANGLE = 63.75 * TAU/360;
+    public static final double HIGH_FRONT_ANGLE = 0.177246*TAU;
     public static final double HIGH_BACK_ANGLE = -61.5 * TAU/360;
     public static final double MID_ANGLE = 70 * TAU/360;
     public static final double LOW_ANGLE = 104 * TAU/360;
 
-    public static final double HIGH_EXTEND_NU = 80_000/2048.; //47_000-2_600
+    public static final double HIGH_EXTEND_NU = 39.223633+0.415039; //47_000-2_600
     public static final double MID_EXTEND_NU = 29_500/2048.;
     public static final double LOW_EXTEND_NU = 0/2048.;
 
@@ -127,7 +127,7 @@ public final class Constants {
     public static final double ORIENTER_KI = 0.0;
     public static final double ORIENTER_KD = 0.0;
 
-    public static final double MAX_TURN_SPEED = 0.6;
+    public static final double MAX_TURN_SPEED = 0.4;
 
     public static final double INTAKE_ANGLE = 5;
     public static final double SINGLE_STATION_POS = -6;

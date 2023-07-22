@@ -185,11 +185,11 @@ public class ArmSubsystem extends SubsystemBase {
 
     @Override
     public void periodic() {
-        SmartDashboard.putNumber("Pivot Pos", getPivotPos());
-        SmartDashboard.putNumber("Pivot Pos w/ GR", getPivotPos()/Constants.Arm.PIVOT_GEARRATIO);
         SmartDashboard.putNumber("Pivot Deg", getPivotDeg());
         SmartDashboard.putNumber("Encoder Deg", getEncoderDeg());
+        SmartDashboard.putNumber("Extend NU", getExtendNU());
         SmartDashboard.putNumber("Pivot Current", getPivotStator());
+        SmartDashboard.putNumber("Extend Current", getExtendStator());
         SmartDashboard.putNumber("Pivot Voltage", getPivotPower());
         SmartDashboard.putBoolean("Encoder Ok", encoderOK());
         double pivotVelocity = getPivotVelocity();
@@ -403,6 +403,9 @@ public class ArmSubsystem extends SubsystemBase {
     public double getPivotPower(){
         // return kick1.getSupplyVoltage().getValue();
         return kick1.getClosedLoopOutput().getValue();
+    }
+    public double getExtendStator(){
+        return tromboneSlide.getStatorCurrent().getValue();
     }
 
     public void setPivotCruiseVelocity(double cruiseVelocity) {

@@ -6,6 +6,7 @@ package frc.robot;
 
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.commands.ArmTestCommand;
+import frc.robot.commands.HighScoreTestCommand;
 import frc.robot.commands.LinearArmCommand;
 import frc.robot.commands.PIDTuneCommand;
 import frc.robot.commands.PointTestCommand;
@@ -31,9 +32,10 @@ public class RobotContainer {
     configureBindings();
     // SmartDashboard.putData(new PIDTuneCommand());
     SmartDashboard.putData(new ArmTestCommand());
-    SmartDashboard.putData(new PointTestCommand());
-    SmartDashboard.putData(new LinearArmCommand(Constants.ArmKinematics.line));
+    // SmartDashboard.putData(new PointTestCommand());
+    // SmartDashboard.putData(new LinearArmCommand(Constants.ArmKinematics.line));
     SmartDashboard.putData("Zero Wrist", new InstantCommand(() -> GrabberSubsystem.getInstance().zeroWrist(), GrabberSubsystem.getInstance()));
+    SmartDashboard.putData(new HighScoreTestCommand());
   }
 
   /**
