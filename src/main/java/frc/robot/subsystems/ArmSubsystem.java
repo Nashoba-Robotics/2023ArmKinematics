@@ -8,6 +8,7 @@ import com.ctre.phoenixpro.configs.TalonFXConfigurator;
 import com.ctre.phoenixpro.controls.Follower;
 import com.ctre.phoenixpro.controls.MotionMagicDutyCycle;
 import com.ctre.phoenixpro.controls.PositionDutyCycle;
+import com.ctre.phoenixpro.controls.VelocityDutyCycle;
 import com.ctre.phoenixpro.hardware.CANcoder;
 import com.ctre.phoenixpro.hardware.TalonFX;
 import com.ctre.phoenixpro.signals.AbsoluteSensorRangeValue;
@@ -36,7 +37,8 @@ public class ArmSubsystem extends SubsystemBase {
 
     private MotionMagicDutyCycle extendSetter;
     private MotionMagicDutyCycle pivotSetter;
-    private PositionDutyCycle s;
+    private VelocityDutyCycle pivotVelositySetter;
+    private PositionDutyCycle pivotPosSetter;
 
     private TalonFX kick1, kick2; //Control the pivoting of the entire arm
     private TalonFXConfigurator foot;
@@ -60,6 +62,8 @@ public class ArmSubsystem extends SubsystemBase {
         tuningSlide = tromboneSlide.getConfigurator();
         extendSetter = new MotionMagicDutyCycle(0, true, 0, 0, false); 
         pivotSetter = new MotionMagicDutyCycle(0, true, 0, 0, false);
+        pivotVelositySetter = new VelocityDutyCycle(0, true, 0, 1, false);
+        pivotPosSetter = new PositionDutyCycle(0, true, 0, 0, false);
 
 
         kick1 = new TalonFX(Constants.Arm.PIVOT_PORT_1, "drivet");
@@ -368,7 +372,23 @@ public class ArmSubsystem extends SubsystemBase {
         pivotSetter.Slot = 0;
         pivotSetter.Position = NU;
         // pivotSetter.FeedForward = ff;
+        // pivotPosSetter.Position = NU;
         kick1.setControl(pivotSetter);
+    }
+    public void pivotVelocity(double speed){
+        speed /= Constants.TAU;
+        //speed in rad/s
+        pivotVelositySetter.Slot = 1;
+        pivotVelositySetter.Velocity = speed;
+
+        double deg = getPivotDeg();
+        double ff = 0.000381453 * Math.abs(deg) - 0.00278642;
+        if(Math.abs(deg) < 7.305){
+            pivotVelositySetter.FeedForward = -Math.sin(deg)*ff;
+        }
+        else pivotVelositySetter.FeedForward = 0;
+
+        kick1.setControl(pivotVelositySetter);
     }
 
     public void pivotPos(double pos){
@@ -398,7 +418,7 @@ public class ArmSubsystem extends SubsystemBase {
         return kick1.getStatorCurrent().getValue();
     }
     public double getPivotVelocity(){
-        return kick1.getVelocity().getValue();
+        return encoder.getVelocity().getValue();
     }
     public double getPivotPower(){
         // return kick1.getSupplyVoltage().getValue();
@@ -464,6 +484,19 @@ public class ArmSubsystem extends SubsystemBase {
     }
     public void setKD(double kD){
         footConfig.Slot0.kD = kD;
+        foot.apply(footConfig);
+    }
+
+    public void setVelocityF(double kF){
+        footConfig.Slot1.kV = kF;
+        foot.apply(footConfig);
+    }
+    public void setVelocityKP(double kP){
+        footConfig.Slot1.kP = kP;
+        foot.apply(footConfig);
+    }
+    public void setVelocityD(double kD){
+        footConfig.Slot1.kD = kD;
         foot.apply(footConfig);
     }
 }

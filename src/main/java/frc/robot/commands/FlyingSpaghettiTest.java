@@ -1,11 +1,17 @@
 package frc.robot.commands;
 
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.CommandBase;
 import frc.robot.Constants;
 import frc.robot.lib.ArmKinematics;
 import frc.robot.lib.Point;
 import frc.robot.subsystems.ArmSubsystem;
 
+/*
+ * Test code for switching between states
+ * CONES ONLY
+ */
 public class FlyingSpaghettiTest extends CommandBase{
     public enum ArmState{
         PREP,
@@ -14,47 +20,61 @@ public class FlyingSpaghettiTest extends CommandBase{
         LOW
     }
 
-    ArmState currState;
+    SendableChooser<ArmState> stateChooser;
+    ArmState lastState;
     ArmState targetState;
     boolean atState = false;
 
     final double targetTime = 0.3;  //seconds
 
+    public FlyingSpaghettiTest(){
+        stateChooser = new SendableChooser<>();
+        stateChooser.setDefaultOption("PREP", ArmState.PREP);
+        stateChooser.addOption("HIGH", ArmState.HIGH);
+        stateChooser.addOption("MID", ArmState.MID);
+        stateChooser.addOption("LOW", ArmState.LOW);
+    }
+
     @Override
     public void initialize() {
-        
+        SmartDashboard.putData(stateChooser);
+
+        ArmSubsystem.getInstance().setPivotAcceleration(0.7);
+        ArmSubsystem.getInstance().setExtendAcceleration(120);
     }
 
     @Override
     public void execute() {
+        targetState = stateChooser.getSelected();
+
         if(!atState){
             switch(targetState){
                 case PREP:
                     atState = atPrep();
-                    if(atState) currState = ArmState.PREP;
+                    if(atState) lastState = ArmState.PREP;
                     break;
                 case LOW:
                     if(atLow()){
                         atState = true;
-                        currState = ArmState.LOW;
+                        lastState = ArmState.LOW;
                     }
                     break;
                 case MID:
                     if(atMid()){
                         atState = true;
-                        currState = ArmState.MID;
+                        lastState = ArmState.MID;
                     }
                     break;
                 case HIGH:
                     if(atHigh()){
                         atState = true;
-                        currState = ArmState.HIGH;
+                        lastState = ArmState.HIGH;
                     }
                     break;
             }
         }
 
-        if(currState != targetState && atState){
+        if(lastState != targetState && atState){
             double currPivot = ArmSubsystem.getInstance().getEncoderRad();
             double currExtend = ArmSubsystem.getInstance().getExtendNU();
 
@@ -70,15 +90,34 @@ public class FlyingSpaghettiTest extends CommandBase{
                     //For now, we assume that the cruise velocity of the previous set was the same that we're using
                     ArmSubsystem.getInstance().pivot(targetPivot);
                     ArmSubsystem.getInstance().extendNU(targetExtend);
+                    atState = false;
                     break;
                 case LOW:
                     break;
                 case MID:
+                    targetPivot = Constants.Arm.MID_ANGLE;
+                    targetExtend = Constants.Arm.MID_EXTEND_NU;
+
+                    switch(lastState){
+                        case LOW:
+                            targetState = ArmState.PREP;
+                            break;
+                        case HIGH:
+                            break;
+                        default:
+                            setPivotVelocity(currPivot, targetPivot, targetTime);
+                            setExtendVelocity(currExtend, targetExtend, targetTime);
+
+                            ArmSubsystem.getInstance().pivot(targetPivot);
+                            ArmSubsystem.getInstance().extendNU(targetExtend);
+                            atState = false;
+                            break;
+                        }
                     break;
                 case HIGH:
                     targetPivot = Constants.Arm.HIGH_FRONT_ANGLE;
                     targetExtend = Constants.Arm.HIGH_EXTEND_NU;
-                    switch(currState){
+                    switch(lastState){
                         case LOW:
                             targetState = ArmState.PREP;
                             break;
@@ -92,9 +131,26 @@ public class FlyingSpaghettiTest extends CommandBase{
                             break;
                     }
                     break;
-                    
             }
         }
+
+
+        String stateName = "Fuck";
+        switch(lastState){
+            case PREP:
+                stateName = "Prep";
+                break;
+            case HIGH:
+                stateName = "High";
+                break;
+            case MID:
+                stateName = "Mid";
+                break;
+            case LOW:
+                stateName = "Low";
+                break;
+        }
+        SmartDashboard.putString("Curr State", stateName);
     }
 
     @Override

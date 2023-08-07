@@ -6,10 +6,14 @@ package frc.robot;
 
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.commands.ArmTestCommand;
+import frc.robot.commands.FlyingSpaghettiTest;
 import frc.robot.commands.HighScoreTestCommand;
 import frc.robot.commands.LinearArmCommand;
 import frc.robot.commands.PIDTuneCommand;
 import frc.robot.commands.PointTestCommand;
+import frc.robot.commands.VelocityTuneCommand;
+import frc.robot.commands.autoscore.AutoHighConeCommand;
+import frc.robot.commands.autoscore.ScoreCommand;
 import frc.robot.subsystems.GrabberSubsystem;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -35,7 +39,10 @@ public class RobotContainer {
     // SmartDashboard.putData(new PointTestCommand());
     // SmartDashboard.putData(new LinearArmCommand(Constants.ArmKinematics.line));
     SmartDashboard.putData("Zero Wrist", new InstantCommand(() -> GrabberSubsystem.getInstance().zeroWrist(), GrabberSubsystem.getInstance()));
-    SmartDashboard.putData(new HighScoreTestCommand());
+    // SmartDashboard.putData(new HighScoreTestCommand());
+    // SmartDashboard.putData(new FlyingSpaghettiTest());
+    // SmartDashboard.putData(new VelocityTuneCommand());
+    SmartDashboard.putData(new AutoHighConeCommand());
   }
 
   /**

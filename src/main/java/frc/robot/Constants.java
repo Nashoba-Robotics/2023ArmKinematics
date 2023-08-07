@@ -61,11 +61,11 @@ public final class Constants {
     //Scorign (Radians)
     public static final double HIGH_FRONT_ANGLE = 0.177246*TAU;
     public static final double HIGH_BACK_ANGLE = -61.5 * TAU/360;
-    public static final double MID_ANGLE = 70 * TAU/360;
+    public static final double MID_ANGLE = 0.193604 * TAU;
     public static final double LOW_ANGLE = 104 * TAU/360;
 
     public static final double HIGH_EXTEND_NU = 39.223633+0.415039; //47_000-2_600
-    public static final double MID_EXTEND_NU = 29_500/2048.;
+    public static final double MID_EXTEND_NU = 19.141602-1.940430;
     public static final double LOW_EXTEND_NU = 0/2048.;
 
     public static final double AUTO_DUNK_ANGLE = 3 * TAU/360;
